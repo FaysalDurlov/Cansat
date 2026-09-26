@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CanSat Ground Station</title>
+    <meta name="description" content="Live telemetry dashboard for a can-sized satellite mission." />
+    <meta name="theme-color" content="#0d1220" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Leaflet -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+
+    <link rel="stylesheet" href="./styles.css" />
+
+    <!-- Three.js module map -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Ambient backdrop -->
+    <div class="backdrop" aria-hidden="true"></div>
+
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <div class="brand">
+          <div class="brand__badge">
+            <i data-lucide="satellite" class="icon-6 text-primary"></i>
+          </div>
+          <div>
+            <h1 class="brand__title">CanSat Ground Station</h1>
+            <p class="brand__subtitle">Live telemetry &middot; Can-sized satellite mission control</p>
+          </div>
+        </div>
+
+        <div class="header__pills">
+          <span class="status-pill" id="status-pill">
+            <span class="status-pill__dot"><span class="status-pill__ping"></span></span>
+            <span id="status-label">No Signal</span>
+          </span>
+          <span class="chip"><span class="chip__label">Packet</span><span class="chip__value" id="packet">&mdash;</span></span>
+          <span class="chip"><span class="chip__label">Updated</span><span class="chip__value" id="updated">&mdash;</span></span>
+            <button class="connect-arduino">
+              Connect CanSat
+            </button>
+        </div>
+      </header>
+
+      <!-- Primary panels -->
+      <section class="grid-2 mt-6">
+        <!-- 3D attitude -->
+        <div class="panel">
+          <div class="panel__head">
+            <i data-lucide="orbit" class="icon-4 text-primary"></i>
+            <div class="panel__titles">
+              <h2 class="panel__title">Attitude / Orientation</h2>
+              <span class="panel__subtitle">MPU-6050 &middot; real-time</span>
+            </div>
+          </div>
+
+          <div class="viewer">
+            <div id="three-mount" class="viewer__canvas"></div>
+            <div class="viewer__overlay">
+              <div class="readout">
+                <i data-lucide="rotate-cw" class="icon-3 text-primary"></i>
+                <div class="readout__body">
+                  <div class="readout__label">Roll</div>
+                  <div class="readout__value" id="roll">&mdash;</div>
+                </div>
+              </div>
+              <div class="readout">
+                <i data-lucide="compass" class="icon-3 text-primary"></i>
+                <div class="readout__body">
+                  <div class="readout__label">Pitch</div>
+                  <div class="readout__value" id="pitch">&mdash;</div>
+                </div>
+              </div>
+              <div class="readout">
+                <i data-lucide="activity" class="icon-3 text-primary"></i>
+                <div class="readout__body">
+                  <div class="readout__label">Yaw rate</div>
+                  <div class="readout__value" id="yaw">&mdash;</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="axis-grid">
+            <div class="axis-row">
+              <div class="axis-row__label">Accel (g)</div>
+              <div class="axis-row__vals">
+                <span><span class="muted">x</span> <span id="ax">&mdash;</span></span>
+                <span><span class="muted">y</span> <span id="ay">&mdash;</span></span>
+                <span><span class="muted">z</span> <span id="az">&mdash;</span></span>
+              </div>
+            </div>
+            <div class="axis-row">
+              <div class="axis-row__label">Gyro (&deg;/s)</div>
+              <div class="axis-row__vals">
+                <span><span class="muted">x</span> <span id="gx">&mdash;</span></span>
+                <span><span class="muted">y</span> <span id="gy">&mdash;</span></span>
+                <span><span class="muted">z</span> <span id="gz">&mdash;</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPS map -->
+        <div class="panel">
+          <div class="panel__head">
+            <i data-lucide="map-pin" class="icon-4 text-primary"></i>
+            <div class="panel__titles">
+              <h2 class="panel__title">Ground Track</h2>
+              <span class="panel__subtitle">GPS &middot; live position</span>
+            </div>
+          </div>
+
+          <div class="map-wrap">
+            <div id="map"></div>
+          </div>
+
+          <div class="metric-grid metric-grid--gps">
+            <div class="metric">
+              <div class="metric__head"><span class="metric__label">Latitude</span><i data-lucide="map-pin" class="icon-4 text-primary"></i></div>
+              <div class="metric__value-row"><span class="metric__value" id="lat">&mdash;</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric__head"><span class="metric__label">Longitude</span><i data-lucide="map-pin" class="icon-4 text-primary"></i></div>
+              <div class="metric__value-row"><span class="metric__value" id="lon">&mdash;</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric__head"><span class="metric__label">Altitude</span><i data-lucide="mountain" class="icon-4 text-primary"></i></div>
+              <div class="metric__value-row"><span class="metric__value" id="alt">&mdash;</span><span class="metric__unit">m</span></div>
+            </div>
+            <div class="metric">
+              <div class="metric__head"><span class="metric__label">Satellites</span><i data-lucide="satellite" class="icon-4" id="sat-icon"></i></div>
+              <div class="metric__value-row"><span class="metric__value" id="sats">&mdash;</span></div>
+              <p class="metric__hint" id="fix-hint">&mdash;</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Environment + radio link -->
+      <section class="mt-4">
+        <h2 class="section-title">Environment &amp; Radio Link</h2>
+        <div class="metric-grid metric-grid--env">
+          <div class="metric">
+            <div class="metric__head"><span class="metric__label">Temperature</span><i data-lucide="thermometer" class="icon-4 text-chart-3"></i></div>
+            <div class="metric__value-row"><span class="metric__value" id="bme-temp">&mdash;</span><span class="metric__unit">&deg;C</span></div>
+            <div class="progress"><div class="progress__bar text-chart-3" id="bme-temp-bar"></div></div>
+          </div>
+          <div class="metric">
+            <div class="metric__head"><span class="metric__label">Humidity</span><i data-lucide="droplets" class="icon-4 text-primary"></i></div>
+            <div class="metric__value-row"><span class="metric__value" id="humidity">&mdash;</span><span class="metric__unit">%</span></div>
+            <div class="progress"><div class="progress__bar text-primary" id="humidity-bar"></div></div>
+          </div>
+          <div class="metric">
+            <div class="metric__head"><span class="metric__label">Pressure</span><i data-lucide="gauge" class="icon-4 text-accent"></i></div>
+            <div class="metric__value-row"><span class="metric__value" id="pressure">&mdash;</span><span class="metric__unit">hPa</span></div>
+          </div>
+          <div class="metric">
+            <div class="metric__head"><span class="metric__label">Gas</span><i data-lucide="flame" class="icon-4 text-chart-4"></i></div>
+            <div class="metric__value-row"><span class="metric__value" id="gas">&mdash;</span><span class="metric__unit">k&#8486;</span></div>
+            <div class="progress"><div class="progress__bar text-chart-4" id="gas-bar"></div></div>
+          </div>
+          <div class="metric">
+            <div class="metric__head"><span class="metric__label">RSSI</span><i data-lucide="signal" class="icon-4" id="rssi-icon"></i></div>
+            <div class="metric__value-row"><span class="metric__value" id="rssi">&mdash;</span><span class="metric__unit">dBm</span></div>
+            <div class="progress"><div class="progress__bar" id="rssi-bar"></div></div>
+            <p class="metric__hint" id="rssi-hint">&mdash;</p>
+          </div>
+          <div class="metric">
+            <div class="metric__head"><span class="metric__label">SNR</span><i data-lucide="radio" class="icon-4 text-accent"></i></div>
+            <div class="metric__value-row"><span class="metric__value" id="snr">&mdash;</span><span class="metric__unit">dB</span></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span id="mpu-temp">MPU temp: &mdash;</span>
+        <span>Telemetry refresh &middot; 2 Hz</span>
+      </footer>
+    </div>
+
+    <!-- Leaflet + Lucide globals -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
